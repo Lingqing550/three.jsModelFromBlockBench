@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <!-- 引入模型加载类 -->
+  <script src="./LoadingFromJson.js"></script>
+  <style>
+    canvas {
+      border: 1px solid red;
+      margin: auto auto;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    //这样创建模型加载实例(形参是模型json的路径)
+    //const test = new JsonModel("./models/end_crystal/end_crystal.json");
+    const test = new JsonModel("./models/player/player.json");
+    //可以这样渲染加载实例对应的模型
+    test.sceneMaker().then(scene => {
+      document.querySelector('body').appendChild(scene);
+    }).catch((error) => {
+      console.error(`Promise Catch:${error}`);
+    });
+  </script>
+</body>
+</html>
