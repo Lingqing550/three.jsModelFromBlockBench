@@ -46,17 +46,23 @@ class JsonModel {
     cubeBox.position.set(-cubeBoxPosition.x, -cubeBoxPosition.y, -cubeBoxPosition.z);
     bigBox.add(cubeBox);
     scene.add(bigBox);
-    console.log(cubeBoxPosition);
+    //console.log(cubeBox);
     camera.position.set(bigBox.position.x, bigBox.position.y, bigBox.position.z - 50);
     camera.lookAt(bigBox.position);
     scene.add(camera);
     renderer.clearDepth();
-    this.rotateAnimation(bigBox, {
-      "angle": 0.5, "axis": "y", "origin": [cubeBoxPosition.x, cubeBoxPosition.y, cubeBoxPosition.z]
-    }, { renderer: renderer, camera: camera, scene: scene });
-    this.mouseInteraction(renderer.domElement, bigBox, { renderer: renderer, camera: camera, scene: scene });
+    // this.rotateAnimation(bigBox, {
+    //   "angle": 0.5, "axis": "y", "origin": [cubeBoxPosition.x, cubeBoxPosition.y, cubeBoxPosition.z]
+    // }, { renderer: renderer, camera: camera, scene: scene });
+    //this.mouseInteraction(renderer.domElement, bigBox, { renderer: renderer, camera: camera, scene: scene });
+    const animation1 = this.animationMaker(this.jsonModel.animations);
+    this.animationPlayerMaker(cubeBox,animation1[0]);
     renderer.render(scene, camera);
     this.threeJsModel = renderer.domElement;
+    setInterval(()=>{
+      renderer.render(scene, camera);
+    },16);
+    //this.animationMaker(this.jsonModel.animations, cubeBox);
     return renderer.domElement;
   };
   async cubeMaker(cubeObj) {
@@ -255,4 +261,35 @@ class JsonModel {
       interaction && document.removeEventListener('mousemove', interaction);
     })
   };
+  animationMaker(animationsJson) {
+    let animationsList = [];
+    animationsJson.forEach(animations => {
+      let clipKeyList = [];
+      Object.keys(animations.animation).forEach(part => {
+        Object.keys(animations.animation[part]).forEach(clipJsonName => {
+          let values = [];
+          let times = Object.keys(animations.animation[part][clipJsonName]);
+          times.forEach(time => {
+            values = values.concat(animations.animation[part][clipJsonName][time]);
+          });
+          times = times.map(Number);
+          //const obj = cubeBox.getObjectByName(part);
+          const kF = new THREE.KeyframeTrack(`${part}.${clipJsonName}`, times, values);
+          //values = [];
+          clipKeyList.push(kF);
+        });
+      });
+      const clip = new THREE.AnimationClip(animations.name, animations.time, clipKeyList);
+      animationsList.push(clip);
+      
+    });
+    //console.log(animationsList);
+    return animationsList;
+  };
+  animationPlayerMaker(cubeBox,animation) {
+    const mixer = new THREE.AnimationMixer(cubeBox);
+    const clipAction = mixer.clipAction(animation);
+    clipAction.play();
+  };
+
 };
