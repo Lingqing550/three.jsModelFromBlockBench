@@ -1,3 +1,7 @@
+/*by lingqing
+  https://github.com/Lingqing550/three.jsModelFromBlockBench
+*/
+
 class JsonModel {
   constructor(jsonPath) {
     this.jsonPath = jsonPath;
@@ -5,6 +9,7 @@ class JsonModel {
     this.canvasWidth = 300;
     this.canvasHeight = 300;
     this.animationPriority = 0;
+    this.three = {};
   };
   toHu(du) {
     return Math.PI * (du / 180);
@@ -36,6 +41,21 @@ class JsonModel {
     const camera = new THREE.PerspectiveCamera(60, width / height, 1, 500);
     const renderer = new THREE.WebGLRenderer({ alpha: true, premultipliedAlpha: false });
     renderer.setSize(width, height);
+    const bigBox = await this.bigBoxMaker();
+    scene.add(bigBox);
+    camera.position.set(bigBox.position.x, bigBox.position.y, bigBox.position.z - 50);
+    camera.lookAt(0, 0, 0);
+    scene.add(camera);
+    renderer.clearDepth();
+    this.three.allScene = { renderer: renderer, camera: camera, scene: scene };
+    this.three.domElement = renderer.domElement;
+    setInterval(() => {
+      renderer.render(scene, camera);
+    }, 16);
+    return renderer.domElement;
+  };
+  async bigBoxMaker() {
+    !this.isThreeJsLoader && await this.threeJsLoader();
     const cubeBox = new THREE.Object3D();
     let promiseList = [];
     const cubeBoxPosition = new THREE.Vector3();
@@ -44,26 +64,10 @@ class JsonModel {
     cubeBoxPosition.divideScalar(cubeBox.children.length);
     const bigBox = new THREE.Object3D();
     cubeBox.position.set(-cubeBoxPosition.x, -cubeBoxPosition.y, -cubeBoxPosition.z);
+    this.three.modelBox = bigBox;
+    this.three.allModelCenter = cubeBoxPosition;
     bigBox.add(cubeBox);
-    scene.add(bigBox);
-    //console.log(cubeBox);
-    camera.position.set(bigBox.position.x, bigBox.position.y, bigBox.position.z - 50);
-    camera.lookAt(bigBox.position);
-    scene.add(camera);
-    renderer.clearDepth();
-    // this.rotateAnimation(bigBox, {
-    //   "angle": 0.5, "axis": "y", "origin": [cubeBoxPosition.x, cubeBoxPosition.y, cubeBoxPosition.z]
-    // }, { renderer: renderer, camera: camera, scene: scene });
-    //this.mouseInteraction(renderer.domElement, bigBox, { renderer: renderer, camera: camera, scene: scene });
-    const animation1 = this.animationMaker(this.jsonModel.animations);
-    this.animationPlayerMaker(cubeBox,animation1[0]);
-    renderer.render(scene, camera);
-    this.threeJsModel = renderer.domElement;
-    setInterval(()=>{
-      renderer.render(scene, camera);
-    },16);
-    //this.animationMaker(this.jsonModel.animations, cubeBox);
-    return renderer.domElement;
+    return bigBox;
   };
   async cubeMaker(cubeObj) {
     const {
@@ -73,18 +77,9 @@ class JsonModel {
       rotation: cubeRotation,
       faces: cubeFaces
     } = cubeObj;
-    const mCTextureMap = ["east",
-      "west",
-      "up",
-      "down",
-      "south",
-      "north"];
+    const mCTextureMap = ["east", "west", "up", "down", "south", "north"];
     let cubeTexture = new Array(6);
-    for (let i = 0; i < 6; i++) {
-      cubeTexture[i] = new THREE.MeshBasicMaterial({
-        color: 0xffffff
-      });
-    };
+    for (let i = 0; i < 6; i++) cubeTexture[i] = new THREE.MeshBasicMaterial({ color: 0xffffff });
     let promiseList = new Array();
     for (let i = 0; i < 6; i++) {
       if (cubeFaces[mCTextureMap[i]]) {
@@ -182,77 +177,35 @@ class JsonModel {
       new THREE.TextureLoader().load(imgPath, texture => resolve(texture.image), undefined, err => reject(new Error(`纹理图片加载失败:${err}`)));
     });
   };
-  rotateAnimation(cubeObj, rotation, scenes) {
+  addRotateAnimation(rotation) {
+    !this.three.modelBox && this.bigBoxMaker();
     const {
       angle: angle,
-      axis: axis,
-      origin: origin
+      axis: axis
     } = rotation;
-    const {
-      renderer: renderer,
-      camera: camera,
-      scene: scene
-    } = scenes;
-    let animation = 0;
-    let allAngle = 0;
     const animationPriority = 1;
-    switch (axis) {
-      case "x":
-        animation = () => {
-          requestAnimationFrame(animation);
-          if (this.animationPriority > animationPriority) {
-            return;
-          };
-          this.animationPriority = animationPriority;
-          allAngle += angle;
-          cubeObj.rotation.x = (this.toHu(allAngle));
-          renderer.render(scene, camera);
-        };
-        break;
-      case "y":
-        animation = () => {
-          requestAnimationFrame(animation);
-          if (this.animationPriority > animationPriority) {
-            return;
-          };
-          this.animationPriority = animationPriority;
-          allAngle += angle;
-          cubeObj.rotation.y = (this.toHu(allAngle));
-          renderer.render(scene, camera);
-        };
-        break;
-      case "z":
-        animation = () => {
-          requestAnimationFrame(animation);
-          if (this.animationPriority > animationPriority) {
-            return;
-          };
-          this.animationPriority = animationPriority;
-          allAngle += angle;
-          cubeObj.rotation.z = (this.toHu(allAngle));
-          renderer.render(scene, camera);
-        };
-        break;
+    const animation = () => {
+      requestAnimationFrame(animation);
+      if (this.animationPriority > animationPriority) {
+        return;
+      };
+      this.animationPriority = animationPriority;
+      this.three.modelBox.rotation[axis] += (this.toHu(angle));
     };
     animation();
     return animation;
   };
-  mouseInteraction(element, cubeObj, scenes) {
-    const {
-      renderer: renderer,
-      camera: camera,
-      scene: scene
-    } = scenes;
+  addMouseInteraction() {
+    !this.three.modelBox && this.bigBoxMaker();
     const animationPriority = 2;
     let interaction = (e) => {
       if (this.animationPriority > animationPriority) {
         return;
       };
-      cubeObj.rotateY(this.toHu(-e.movementX));
-      cubeObj.rotateX(this.toHu(-e.movementY));
-      renderer.render(scene, camera);
+      this.three.modelBox.rotateY(this.toHu(-e.movementX));
+      this.three.modelBox.rotateX(this.toHu(-e.movementY));
     };
-    element.addEventListener('mousedown', () => {
+    this.three.domElement.addEventListener('mousedown', () => {
       this.animationPriority = animationPriority;
       document.addEventListener('mousemove', interaction);
     });
@@ -261,7 +214,11 @@ class JsonModel {
       interaction && document.removeEventListener('mousemove', interaction);
     })
   };
-  animationMaker(animationsJson) {
+  animationMaker() {
+    if (!this.jsonModel.animations) {
+      throw new Error("模型不包含动画或模型未加载");
+    };
+    const animationsJson = this.jsonModel.animations;
     let animationsList = [];
     animationsJson.forEach(animations => {
       let clipKeyList = [];
@@ -273,23 +230,36 @@ class JsonModel {
             values = values.concat(animations.animation[part][clipJsonName][time]);
           });
           times = times.map(Number);
-          //const obj = cubeBox.getObjectByName(part);
-          const kF = new THREE.KeyframeTrack(`${part}.${clipJsonName}`, times, values);
-          //values = [];
-          clipKeyList.push(kF);
+          if (clipJsonName == "rotation") {
+            values = values.map(this.toHu);
+            const kfX = new THREE.KeyframeTrack(`${part}.${clipJsonName}[x]`, times, [values[0], values[3], values[6]]);
+            const kfY = new THREE.KeyframeTrack(`${part}.${clipJsonName}[y]`, times, [values[1], values[4], values[7]]);
+            const kfZ = new THREE.KeyframeTrack(`${part}.${clipJsonName}[z]`, times, [values[2], values[5], values[8]]);
+            clipKeyList.push(kfX, kfY, kfZ);
+          } else {
+            const kF = new THREE.KeyframeTrack(`${part}.${clipJsonName}`, times, values);
+            clipKeyList.push(kF);
+          };
         });
       });
       const clip = new THREE.AnimationClip(animations.name, animations.time, clipKeyList);
       animationsList.push(clip);
-      
     });
-    //console.log(animationsList);
+    this.three.animationsList = animationsList;
     return animationsList;
   };
-  animationPlayerMaker(cubeBox,animation) {
-    const mixer = new THREE.AnimationMixer(cubeBox);
+  animationPlayer(animationIndex) {
+    !this.three.animationsList && this.animationMaker();
+    const animation = this.three.animationsList[animationIndex];
+    const mixer = new THREE.AnimationMixer(this.three.modelBox);
     const clipAction = mixer.clipAction(animation);
     clipAction.play();
+    const clock = new THREE.Clock();
+    const loop = () => {
+      requestAnimationFrame(loop);
+      const frame = clock.getDelta();
+      mixer.update(frame);
+    };
+    loop();
   };
-
 };

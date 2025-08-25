@@ -17,14 +17,22 @@
 <body>
   <script>
     //这样创建模型加载实例(形参是模型json的路径)
-    //const test = new JsonModel("./models/end_crystal/end_crystal.json");
-    const test = new JsonModel("./models/player/player.json");
+    const test = new JsonModel("./models/end_crystal/end_crystal.json");
+    //const test = new JsonModel("./models/player/player.json");
     //可以这样渲染加载实例对应的模型
     test.sceneMaker().then(scene => {
       document.querySelector('body').appendChild(scene);
+      //可以这样添加鼠标交互
+      test.addMouseInteraction();
+      //添加旋转动画             旋转角度/帧   旋转轴
+      test.addRotateAnimation({"angle": 0.5, "axis": "y"});
+      //添加关键帧动画  索引↓
+      //test.animationPlayer(0);
     }).catch((error) => {
       console.error(`Promise Catch:${error}`);
     });
+    console.log(test);
+    
   </script>
 </body>
 </html>
